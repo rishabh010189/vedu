@@ -15,8 +15,6 @@ const utility = require('./common/utility');
 
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
 
-const nextActionList = ['change date', 'change destination', 'start over', 'custom date'];
-
 // Create an app instance
 const app = dialogflow();
 
@@ -32,6 +30,7 @@ let user = {name:'',location:''};
   }
 
   function bookTrainTicket(conv){
+    console.log(conv.parameters);
     let originStation = conv.parameters.trainOriginStation;
     let destinationStation = conv.parameters.trainDestinationStation;
     if(!user.location){
@@ -56,7 +55,7 @@ let user = {name:'',location:''};
         if(user.location && originStation != user.location && user.location !== 'PERMISSION DENIED'){
           conv.ask(new Suggestions(`🚩 ${user.location}`));
         }
-        conv.ask(new Suggestions(`Start over`), new Suggestions(`Pune`));
+        conv.ask(new Suggestions(`Pune`), new Suggestions(`Start over`));
       }else{
         conv.ask(`Can you please help me with the destination station?`);
         if(user.location && originStation != user.location && user.location !== 'PERMISSION DENIED'){
@@ -89,10 +88,11 @@ let user = {name:'',location:''};
     const tomorrowDate = new Date((new Date).setDate(todayDate.getDate() + 1));
     const threeDaysFromNow = new Date((new Date).setDate(todayDate.getDate() + 3));
     const weekEnum = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const nextActionList = ['change date', 'custom date'];
     
     let travelDate = conv.parameters.travelDate;
     let nextAction = context.parameters.nextAction;
-    console.log('conv.query');
+    console.log(conv.query);
     if(conv.query && nextActionList.indexOf(conv.query.toLowerCase()) > -1){
       nextAction = conv.query;
     }
@@ -116,24 +116,12 @@ let user = {name:'',location:''};
       conv.parameters.nextAction = null;
       conv.contexts.set(CONSTANTS.Contexts.JourneyStationsData, 3, { '_originStation': originStation, '_destinationStation': destinationStation, 'retryText': 'Please select a new Date.', 'travelDate': null, 'nextAction':null });
     }
-    else if(nextAction === 'Change Destination'){
-      console.log('change destination reached')
-      conv.contexts.set(CONSTANTS.Contexts.ShowBookTicketsData, 3, { '_originStation': originStation, '_destinationStation': '' });
-      conv.followup(CONSTANTS.Events.BookTicket);
-    }
     else if(nextAction === 'Custom Date'){
       console.log('custom date reached')
       conv.ask('Please enter custom date (dd/mm/yyyy)');
       conv.parameters.travelDate = null;
       conv.parameters.nextAction = null;
       conv.contexts.set(CONSTANTS.Contexts.JourneyStationsData, 3, { '_originStation': originStation, '_destinationStation': destinationStation, 'retryText': 'Please enter custom date (dd/mm/yyyy)', 'travelDate': null, 'nextAction':null });
-    }
-    else if(nextAction === 'Start Over'){
-      console.log('Start Over');
-      for(let context of conv.contexts){
-        conv.context.delete(context.name);
-      }
-      conv.followup('Google Assistant Welcome');
     }
     else{
       if(utility.isDateValid(travelDate) && travelDate.toLocaleDateString() === tomorrowDate.toLocaleDateString()){
@@ -144,7 +132,7 @@ let user = {name:'',location:''};
         conv.parameters.travelDate = null;
         conv.contexts.set(CONSTANTS.Contexts.JourneyStationsData, 3, { '_originStation': originStation, '_destinationStation': destinationStation, 'retryText': 'Please select a new Date.', 'travelDate': null });
       }
-      else if(travelDate < todayDate){
+      else if(travelDate.setHours(0,0,0,0) < todayDate.setHours(0,0,0,0)){
         console.log("date cannot be in past");
         conv.ask('date of journey cannot be in past');
         conv.ask(new Suggestions('Change Date'));
@@ -166,34 +154,12 @@ let user = {name:'',location:''};
     let travelClass = conv.parameters.travelClass;
     console.log('Finally');
     console.log(context);
-    let nextAction = context.parameters.nextAction;
-    if(conv.query && nextActionList.indexOf(conv.query.toLowerCase()) > -1){
-      nextAction = conv.query;
-    }
+    console.log(travelClass);
+    console.log("conv travel class : " + conv.parameters.travelClass);
     if(!travelClass){
       conv.ask('Which class do you want to travel?')
-      conv.ask(new Suggestions('EC'), new Suggestions('1AC', new Suggestions('2AC'), new Suggestions('3AC')));
-      conv.ask(new Suggestions('Change Destination'));
-      conv.ask(new Suggestions('Start Over'));
-    }
-    else if(nextAction === 'Change Destination'){
-      console.log('change destination reached')
-      conv.contexts.set(CONSTANTS.Contexts.ShowBookTicketsData, 3, { '_originStation': originStation, '_destinationStation': '' });
-      conv.followup(CONSTANTS.Events.BookTicket);
-    }
-    else if(nextAction === 'Custom Date'){
-      console.log('custom date reached')
-      conv.ask('Please enter custom date (dd/mm/yyyy)');
-      conv.parameters.travelDate = null;
-      conv.parameters.nextAction = null;
-      conv.contexts.set(CONSTANTS.Contexts.JourneyStationsData, 3, { '_originStation': originStation, '_destinationStation': destinationStation, 'retryText': 'Please enter custom date (dd/mm/yyyy)', 'travelDate': null, 'nextAction':null });
-    }
-    else if(nextAction === 'Start Over'){
-      console.log('Start Over');
-      for(let context of conv.contexts){
-        conv.context.delete(context.name);
-      }
-      conv.followup('Google Assistant Welcome');
+      conv.ask(new Suggestions('EC'), new Suggestions('1AC'), new Suggestions('2AC'), new Suggestions('3AC'));
+      conv.ask(new Suggestions('Change Destination'), new Suggestions('Start Over'));
     }
     else{
       conv.ask('ab to samjho ho gaya');
@@ -201,14 +167,18 @@ let user = {name:'',location:''};
     }
   }
 
-  app.intent(CONSTANTS.Intents.DefaultWelcomeIntent, welcome);
-  app.intent(CONSTANTS.Intents.DefaultFallbackIntent, fallback);
-  app.intent(CONSTANTS.Intents.BookTrainTicket, bookTrainTicket);
-  app.intent(CONSTANTS.Intents.TrainTravelPlan, planTravelDates);
-  app.intent(CONSTANTS.Intents.TrainTravelClass, selectTravelClass);
+  function changeDestination(conv){
+    let context = conv.contexts.get(CONSTANTS.Contexts.JourneyStationsData);
+    let originStation = context.parameters._originStation;
+    conv.contexts.set(CONSTANTS.Contexts.ShowBookTicketsData, 3, { '_originStation': originStation, '_destinationStation': '', retryText: 'Can you please help me with the new destination station?' });
+    conv.followup(CONSTANTS.Events.BookTicket, {trainOriginStation : originStation, trainDestinationStation:''});
+  }
 
- // Create a Dialogflow intent with the `actions_intent_PERMISSION` event
-  app.intent(CONSTANTS.Intents.GetLocationPermission, (conv, params, granted) => {
+  function startOver(conv){
+    conv.followup(CONSTANTS.Events.Welcome);
+  }
+
+  function getLocationPermission(conv, params, granted) {
     // granted: inferred first (and only) argument value, boolean true if granted, false if not
     const explicit = conv.arguments.get('PERMISSION') // also retrievable w/ explicit arguments.get
     if(explicit){
@@ -220,8 +190,18 @@ let user = {name:'',location:''};
       user.location = 'PERMISSION DENIED';
     }
     conv.followup(CONSTANTS.Events.BookTicket);
-  })
+  }
+
+  app.intent(CONSTANTS.Intents.DefaultWelcomeIntent, welcome);
+  app.intent(CONSTANTS.Intents.DefaultFallbackIntent, fallback);
+  app.intent(CONSTANTS.Intents.BookTrainTicket, bookTrainTicket);
+  app.intent(CONSTANTS.Intents.TrainTravelPlan, planTravelDates);
+  app.intent(CONSTANTS.Intents.TrainTravelClass, selectTravelClass);
+  app.intent(CONSTANTS.Intents.ChangeDestination, changeDestination);
+  app.intent(CONSTANTS.Intents.StartOver, startOver);
+
+ // Create a Dialogflow intent with the `actions_intent_PERMISSION` event
+  app.intent(CONSTANTS.Intents.GetLocationPermission, getLocationPermission)
 
 
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest(app);
-
