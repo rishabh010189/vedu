@@ -17,10 +17,13 @@ var CONSTANTS = {
       TrainTravelClass_No : 'Train.travel.class - no',
       MakePayments : 'Payments.make',
       MakePayments_Completed: 'Payments.make - completed',
+      MakePayments_Completed_Yes :'Payments.make - completed - yes',
       RentCarIntent: 'Rent.car.intent',
       RentCarForUser: 'Rent.car.user',
       RentCarForGuest: 'Rent.car.guest',
-      RentCarForUser_No : 'Rent.car.user - no'
+      RentCarForUser_No : 'Rent.car.user - no',
+      RentCarForUser_Yes :'Rent.car.user - yes',
+      CarSelection : 'Car.selection'
     },
   
     Events : {
@@ -34,12 +37,14 @@ var CONSTANTS = {
       MakePayments: 'event-make-payment',
       RentCarForUser: 'event-rent-car-user',
       RentCarForGuest: 'event-rent-car-guest',
+      CarSelection: 'event-car-selection'
     },
   
     Contexts : {
       JourneyStationsData : 'journey-stations-data',
       ShowBookTicketsData : 'show-book-tickets-data',
-      UserTicketsData : 'user-tickets-data'
+      UserTicketsData : 'user-tickets-data',
+      CarRentData:'car-rent-data'
     }
   }
   

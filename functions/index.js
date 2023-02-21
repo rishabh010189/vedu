@@ -1,13 +1,13 @@
-// See https://github.com/dialogflow/dialogflow-fulfillment-nodejs
-// for Dialogflow fulfillment library docs, samples, and to report issues
 'use strict';
  
 const functions = require('firebase-functions');
-// const {WebhookClient} = require('dialogflow-fulfillment');
-// const {Card, Suggestion} = require('dialogflow-fulfillment');
 const {dialogflow,Permission,Suggestions, BasicCard, Button, Image} = require('actions-on-google');
 const Nanoid = require('./node_modules/nanoid');
 
+/**
+ * Imports from custom modules
+ * 
+ */
 const CONSTANTS = require('./common/constants');
 const utility = require('./common/utility');
 
@@ -16,6 +16,10 @@ process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
 // Create an app instance
 const app = dialogflow();
 
+/**
+ * global variables
+ * 
+ */
 let user = {name:'',location:''};
 let isSessionActive = false;
  
@@ -29,18 +33,15 @@ let isSessionActive = false;
   }
 
   function bookTrainTicket(conv){
-    console.log(conv.parameters);
     let originStation = conv.parameters.trainOriginStation;
     let destinationStation = conv.parameters.trainDestinationStation;
     if(!user.location){
-      console.log('INSIDE LOCATION PERMISSISON');
       conv.ask(new Permission({
         context: 'To know your city',
         permissions: 'DEVICE_PRECISE_LOCATION',
       }))
     }
     if(!originStation){
-      console.log('INSIDE ORIGIN');
       conv.ask(`What would be the origin station for this journey?`);
       if(user.location && user.location !== 'PERMISSION DENIED'){
         conv.ask(new Suggestions(`🚩 ${user.location}`));
@@ -91,15 +92,10 @@ let isSessionActive = false;
     
     let travelDate = conv.parameters.travelDate;
     let nextAction = context.parameters.nextAction;
-    console.log(conv.query);
     if(conv.query && nextActionList.indexOf(conv.query.toLowerCase()) > -1){
       nextAction = conv.query;
     }
-    console.log("next action " +nextAction);
     travelDate = new Date(travelDate);
-    console.log('today date'+ todayDate.toLocaleDateString());
-    console.log('today date'+ tomorrowDate.toLocaleDateString());
-    console.log("travel date " +travelDate.toLocaleDateString());
 
     if(!utility.isDateValid(travelDate) && !nextAction){
       conv.ask(context.parameters.retryText);
@@ -107,7 +103,6 @@ let isSessionActive = false;
       conv.ask(new Suggestions('Custom Date'));
     }
     else if(nextAction === 'Change Date'){
-      console.log('change date function reached')
       conv.ask(`Please select a new Date.`);
       conv.ask(new Suggestions('today'), new Suggestions('tomorrow'), new Suggestions(`${weekEnum[threeDaysFromNow.getDay()]} (${threeDaysFromNow.toLocaleDateString()})`));
       conv.ask(new Suggestions('Custom'));
@@ -116,7 +111,6 @@ let isSessionActive = false;
       conv.contexts.set(CONSTANTS.Contexts.JourneyStationsData, 3, { '_originStation': originStation, '_destinationStation': destinationStation, 'retryText': 'Please select a new Date.', 'travelDate': null, 'nextAction':null });
     }
     else if(nextAction === 'Custom Date'){
-      console.log('custom date reached')
       conv.ask('Please enter custom date (dd/mm/yyyy)');
       conv.parameters.travelDate = null;
       conv.parameters.nextAction = null;
@@ -132,7 +126,6 @@ let isSessionActive = false;
         conv.contexts.set(CONSTANTS.Contexts.JourneyStationsData, 3, { '_originStation': originStation, '_destinationStation': destinationStation, 'retryText': 'Please select a new Date.', 'travelDate': null });
       }
       else if(travelDate.setHours(0,0,0,0) < todayDate.setHours(0,0,0,0)){
-        console.log("date cannot be in past");
         conv.ask('date of journey cannot be in past');
         conv.ask(new Suggestions('Change Date'));
         conv.ask(new Suggestions('Change Destination'));
@@ -151,10 +144,6 @@ let isSessionActive = false;
   function selectTravelClass(conv) {
     let context = conv.contexts.get(CONSTANTS.Contexts.JourneyStationsData);
     let travelClass = conv.parameters.travelClass;
-    console.log('Finally');
-    console.log(context);
-    console.log(travelClass);
-    console.log("conv travel class : " + conv.parameters.travelClass);
     if(!travelClass){
       conv.ask('Which class do you want to travel?')
       conv.ask(new Suggestions('EC'), new Suggestions('1AC'), new Suggestions('2AC'), new Suggestions('3AC'));
@@ -234,7 +223,6 @@ let isSessionActive = false;
       travelDate
     }
     setTimeout(() => {
-      console.log('Session Expired!!!');
       isSessionActive = false;
       delete user.journey;
     }, 20000);
@@ -252,10 +240,16 @@ let isSessionActive = false;
     conv.ask(new Suggestions('Yes'), new Suggestions('No'));
   }
 
+  function paymentReceivedYes(conv){
+    let context = conv.contexts.get(CONSTANTS.Contexts.JourneyStationsData);
+    let destinationStation = context.parameters._destinationStation;
+    let travelDate = context.parameters.travelDate;
+    conv.contexts.set(CONSTANTS.Contexts.CarRentData, 3, {rentalCity:destinationStation, rentalDate:travelDate});
+    conv.followup(CONSTANTS.Events.CarSelection);
+    conv.ask('Please proceed to select car type');
+  }
+
   function rentCarFlowCheck(conv){
-    console.log('Inside rent a car');
-    console.log('Is session Active : ' + isSessionActive);
-    console.log(user.journey);
     if(isSessionActive && user.journey){
       // let destinationStation = context.parameters._destinationStation;
       conv.contexts.set(CONSTANTS.Contexts.UserTicketsData, 3, user.journey);
@@ -267,8 +261,6 @@ let isSessionActive = false;
 
   function rentCarForUser(conv){
     let context = conv.contexts.get(CONSTANTS.Contexts.UserTicketsData);
-    console.log('Sessioned User');
-    console.log(context);
     conv.ask('Eurekaaa');
     if(context){
       let destinationStation = context.parameters.destinationStation;
@@ -278,12 +270,10 @@ let isSessionActive = false;
   }
 
   function rentCarForGuest(conv){
-    console.log('Guest');
-    console.log(conv.parameters);
     let destinationCity = conv.parameters.destinationCity;
+    let rentalDate = conv.parameters.rentalDate;
     const todayDate = new Date();
     const tomorrowDate = new Date((new Date).setDate(todayDate.getDate() + 1));
-    let rentalDate = conv.parameters.rentalDate;
     rentalDate = new Date(rentalDate);
     let customDateConstant = 'custom date (dd/mm/yyyy)';
     if(!destinationCity){
@@ -300,11 +290,15 @@ let isSessionActive = false;
       conv.ask(new Suggestions('today'), new Suggestions('tomorrow'), new Suggestions(customDateConstant));
     }
     else if(rentalDate.setHours(0,0,0,0) < todayDate.setHours(0,0,0,0)){
-      conv.ask("Rental date cannot be in the past, please select a new date");
       conv.parameters.rentalDate = null;
+      conv.parameters.destinationCity = destinationCity;
+      conv.ask("Rental date cannot be in the past, please select a new date");
+      conv.ask(new Suggestions('today'), new Suggestions('tomorrow'), new Suggestions(customDateConstant));
     }
     else if(utility.isDateValid(rentalDate)){
-      conv.ask('Please proceed to select car type')
+      conv.contexts.set(CONSTANTS.Contexts.CarRentData, 5, {rentalCity:destinationCity, rentalDate});
+      conv.followup(CONSTANTS.Events.CarSelection);
+      conv.ask('Please proceed to select car type');
     }
     else{
       conv.parameters.rentalDate = null;
@@ -315,15 +309,53 @@ let isSessionActive = false;
     conv.followup(CONSTANTS.Events.RentCarForGuest);
   }
 
+  function rentCarForUserActionYes(conv){
+    let carRentContext = conv.contexts.get(CONSTANTS.Contexts.UserTicketsData);
+    let rentalCity = carRentContext.parameters.destinationStation;
+    let rentalDate = carRentContext.parameters.travelDate;
+    conv.contexts.set(CONSTANTS.Contexts.CarRentData, 5, {rentalCity, rentalDate});
+    conv.followup(CONSTANTS.Events.CarSelection);
+    conv.ask('Please proceed to select car type');
+  }
+
+  function selectCar(conv){
+    let carRentContext = conv.contexts.get(CONSTANTS.Contexts.CarRentData);
+    let rentalCity = carRentContext.parameters.rentalCity;
+    let rentalDate = carRentContext.parameters.rentalDate;
+    if(!utility.isDateValid(rentalDate) && rentalDate.indexOf('/') > -1){
+      let dateArr = rentalDate.split('/'); //[dd/mm/yyy]
+      let month = dateArr[1].length === 1 ? ('0'+dateArr[1]) : dateArr[1];
+      let date = dateArr[0].length === 1 ? ('0'+dateArr[0]) : dateArr[0];
+      rentalDate = new Date("'"+ month + "," + date + "," + dateArr[2] + "'").toLocaleDateString();
+    }else{
+      rentalDate  = new Date(carRentContext.parameters.rentalDate).toLocaleDateString();
+    }
+    let selectedCar = conv.parameters.carType;
+    if(!selectedCar){
+      conv.ask(`Please select from below available cars:`);
+      conv.ask(new Suggestions('🚘 Hyundai i20'), new Suggestions('🚗 MG Hector'), new Suggestions('⚡Tata Tiago EV'), new Suggestions('🏎️ Ford Ecosport'))
+    }else{
+      let transactionId = Nanoid.nanoid();
+      conv.ask(`Car booked with reference ID ${transactionId}`);
+      conv.ask(new BasicCard({
+        text: `Great! Your booking ID ***${transactionId}*** has been confirmed for ***${selectedCar}*** on ***${rentalDate}*** for driving in and around ***${rentalCity}***.  \n
+        Have a great journey 🙋!`,
+        subtitle: 'Booking Confirmed',
+        image: new Image({
+          url: 'http://unblast.com/wp-content/uploads/2020/09/Car-Rent-Vector-Illustration.jpg',
+          alt: 'Booking Confirmed',
+        }),
+      }))
+      conv.close();
+    }
+  }
+
   function getLocationPermission(conv, params, granted) {
     // granted: inferred first (and only) argument value, boolean true if granted, false if not
     const explicit = conv.arguments.get('PERMISSION') // also retrievable w/ explicit arguments.get
     if(explicit){
-      console.log('location received : '+ explicit);
-      console.log(conv.device.location);
       user.location = conv.device.location.city;
     }else{
-      console.log('Location permission not granted');
       user.location = 'PERMISSION DENIED';
     }
     conv.followup(CONSTANTS.Events.BookTicket);
@@ -341,10 +373,13 @@ let isSessionActive = false;
   app.intent(CONSTANTS.Intents.TrainSeatSelection, seatSelection)
   app.intent(CONSTANTS.Intents.MakePayments, makePayment);
   app.intent(CONSTANTS.Intents.MakePayments_Completed, paymentReceived);
+  app.intent(CONSTANTS.Intents.MakePayments_Completed_Yes, paymentReceivedYes);
   app.intent(CONSTANTS.Intents.RentCarIntent, rentCarFlowCheck);
   app.intent(CONSTANTS.Intents.RentCarForUser, rentCarForUser);
   app.intent(CONSTANTS.Intents.RentCarForGuest, rentCarForGuest);
   app.intent(CONSTANTS.Intents.RentCarForUser_No, rentCarForUserActionNo);
+  app.intent(CONSTANTS.Intents.RentCarForUser_Yes, rentCarForUserActionYes);
+  app.intent(CONSTANTS.Intents.CarSelection, selectCar);
 
  // Create a Dialogflow intent with the `actions_intent_PERMISSION` event
   app.intent(CONSTANTS.Intents.GetLocationPermission, getLocationPermission)
