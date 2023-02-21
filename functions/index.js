@@ -55,7 +55,7 @@ let isSessionActive = false;
         if(user.location && originStation != user.location && user.location !== 'PERMISSION DENIED'){
           conv.ask(new Suggestions(`🚩 ${user.location}`));
         }
-        conv.ask(new Suggestions(`Pune`), new Suggestions(`🔁 Start Over`));
+        conv.ask(new Suggestions(`Kanpur`), new Suggestions(`Bangalore`), new Suggestions(`Pune`), new Suggestions(`🔁 Start Over`));
       }else{
         conv.ask(`Can you please help me with the destination station?`);
         if(user.location && originStation != user.location && user.location !== 'PERMISSION DENIED'){
@@ -261,7 +261,6 @@ let isSessionActive = false;
 
   function rentCarForUser(conv){
     let context = conv.contexts.get(CONSTANTS.Contexts.UserTicketsData);
-    conv.ask('Eurekaaa');
     if(context){
       let destinationStation = context.parameters.destinationStation;
       conv.ask(`Do you want to rent car at your destination city 🏡 ${destinationStation}?`);
