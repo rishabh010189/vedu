@@ -134,7 +134,7 @@ let isSessionActive = false;
         conv.contexts.set(CONSTANTS.Contexts.JourneyStationsData, 3, { '_originStation': originStation, '_destinationStation': destinationStation, 'retryText': 'Please select a new Date.', 'travelDate': null });
       }
       else if(utility.isDateValid(travelDate)){
-        conv.contexts.set(CONSTANTS.Contexts.JourneyStationsData, 5, { '_originStation': originStation, '_destinationStation': destinationStation, 'retryText': `Setting travel date for ${travelDate.toLocaleDateString()}`, 'travelDate': travelDate.toLocaleDateString() });
+        conv.contexts.set(CONSTANTS.Contexts.JourneyStationsData, 7, { '_originStation': originStation, '_destinationStation': destinationStation, 'retryText': `Setting travel date for ${travelDate.toLocaleDateString()}`, 'travelDate': travelDate.toLocaleDateString() });
         conv.followup(CONSTANTS.Events.TrainClass);
       }
       
@@ -323,10 +323,7 @@ let isSessionActive = false;
     let rentalCity = carRentContext.parameters.rentalCity;
     let rentalDate = carRentContext.parameters.rentalDate;
     if(!utility.isDateValid(rentalDate) && rentalDate.indexOf('/') > -1){
-      let dateArr = rentalDate.split('/'); //[dd/mm/yyy]
-      let month = dateArr[1].length === 1 ? ('0'+dateArr[1]) : dateArr[1];
-      let date = dateArr[0].length === 1 ? ('0'+dateArr[0]) : dateArr[0];
-      rentalDate = new Date("'"+ month + "," + date + "," + dateArr[2] + "'").toLocaleDateString();
+      conv.parameters.rentalDate = rentalDate;
     }else{
       rentalDate  = new Date(carRentContext.parameters.rentalDate).toLocaleDateString();
     }
