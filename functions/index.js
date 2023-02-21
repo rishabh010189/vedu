@@ -163,6 +163,7 @@ let isSessionActive = false;
   }
 
   function startOver(conv){
+    clearGlobalVariables();
     conv.followup(CONSTANTS.Events.Welcome);
   }
 
@@ -237,6 +238,7 @@ let isSessionActive = false;
       }),
       display: 'CROPPED',
     }));
+    user.location = '';
     conv.ask(new Suggestions('Yes'), new Suggestions('No'));
   }
 
@@ -341,9 +343,15 @@ let isSessionActive = false;
           url: 'http://unblast.com/wp-content/uploads/2020/09/Car-Rent-Vector-Illustration.jpg',
           alt: 'Booking Confirmed',
         }),
-      }))
+      }));
+      clearGlobalVariables();
       conv.close();
     }
+  }
+
+  function clearGlobalVariables(){
+    user = {name:'',location:''};
+    isSessionActive = false;
   }
 
   function getLocationPermission(conv, params, granted) {
